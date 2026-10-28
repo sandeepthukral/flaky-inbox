@@ -1,4 +1,5 @@
 import { createApiApp } from './api/app';
+import { runCleanup } from './cleanup';
 import { parseConfig } from './config';
 import type { Env } from './env';
 import { ingestEmail } from './ingest/ingest';
@@ -31,7 +32,7 @@ export default {
     return new Response('Not Found', { status: 404 });
   },
 
-  async scheduled(_event: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
-    // Stub until the cleanup task.
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runCleanup(env, parseConfig(env), Date.now()));
   },
 };
