@@ -64,15 +64,17 @@ Do these in order. Nothing here is automated.
    pnpm exec wrangler r2 bucket create flaky-inbox-attachments   # private: no public access, no r2.dev URL
    pnpm exec wrangler d1 migrations apply flaky-inbox --remote
    pnpm exec wrangler secret put API_TOKENS        # see "API tokens"
-   pnpm deploy
+   pnpm run deploy
    ```
    `wrangler.toml` sets `workers_dev = false` and `preview_urls = false`. Check in the dashboard that
    the `workers.dev` route is off. Do the CPU measurement below before choosing the attachment cap.
 4. **Custom domains.** Attach `mail-api.flaky-tests.uk` and `mailinat.flaky-tests.uk` to the Worker.
 5. **Access.** In Zero Trust, create a self-hosted application for `mailinat.flaky-tests.uk` with an
    allow policy and one-time-code login; add your allowed addresses in the dashboard. Set the team
-   domain and the application AUD on the Worker as the vars `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`
-   (dashboard or CI; they are not secret). The Worker verifies the `Cf-Access-Jwt-Assertion` header
+   domain and the application AUD on the Worker as Wrangler **secrets**, not dashboard variables:
+   `pnpm exec wrangler secret put ACCESS_TEAM_DOMAIN` and `pnpm exec wrangler secret put ACCESS_AUD`.
+   (`wrangler deploy` replaces plain-text dashboard variables with the `[vars]` in `wrangler.toml`,
+   so a dashboard variable would be wiped by the next deploy; secrets survive.) The Worker verifies the `Cf-Access-Jwt-Assertion` header
    itself against `https://<team>.cloudflareaccess.com` certs and the AUD, and fails closed when
    either var is missing or the token is invalid. **Access service tokens are refused**: a JWT without
    an `email` claim gets no access, so the UI is for humans only.
@@ -101,7 +103,10 @@ Rotation (two tokens per domain allowed at once):
 `.github/workflows/ci.yml` runs typecheck, unit tests and e2e on every push and PR, and deploys on
 push to `main` (migrations, then `wrangler deploy`). Add the repository secrets `CLOUDFLARE_API_TOKEN`
 (Workers, D1 and R2 edit rights) and `CLOUDFLARE_ACCOUNT_ID`. The `API_TOKENS` secret is set once with
-`wrangler secret put` and is not touched by deploys.
+`wrangler secret put` and is not touched by deploys; neither are `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`.
+The deploy job only runs when the repository variable `DEPLOY_ENABLED` is `true`. Set it (Settings,
+Secrets and variables, Actions, Variables) after the first manual `pnpm run deploy` has worked. To
+change a plain setting such as `RETENTION_HOURS`, edit `[vars]` in `wrangler.toml` and redeploy.
 
 ### What happens when `email()` throws
 
@@ -109,7 +114,8 @@ Open item, check at deploy. Cloudflare's Email Workers runtime docs describe `se
 SMTP rejection, so the sender gets a bounce) but say nothing about uncaught exceptions. Community
 reports suggest Email Routing retries the Worker call a few times, then drops the mail, and that a
 Worker cannot ask for a temporary failure. This is unconfirmed. The code only throws when the D1 write
-fails (R2 objects are cleaned up first). To confirm: deploy a build that throws on a test address and
+fails (R2 objects are cleaned up first). A PostalMime parse failure on malformed mail also throws, so
+that mail is not stored; this is a known, accepted limitation. To confirm: deploy a build that throws on a test address and
 watch the sender's bounce and `wrangler tail`. Record the result here.
 
 ## CPU measurements

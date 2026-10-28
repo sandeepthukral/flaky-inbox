@@ -20,8 +20,8 @@ migrations_dir = "migrations"
 binding = "BUCKET"
 bucket_name = "flaky-inbox-attachments"
 
-# Secrets (never put here): API_TOKENS. Optional: ACCESS_TEAM_DOMAIN, ACCESS_AUD
-# can be set in the dashboard or CI instead of being committed.
+# Secrets (never put here; set with `wrangler secret put`): API_TOKENS, ACCESS_TEAM_DOMAIN, ACCESS_AUD.
+# Dashboard plain-text vars would be wiped by `wrangler deploy`.
 [vars]
 ALLOWED_DOMAINS = "ecom-staging.flaky-tests.uk,ecom-production.flaky-tests.uk"
 API_HOST = "mail-api.flaky-tests.uk"

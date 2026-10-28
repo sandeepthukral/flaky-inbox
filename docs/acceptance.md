@@ -68,9 +68,9 @@ Notes: ____
 
 ## Step 6: Cleanup works live
 
-- [ ] Set `RETENTION_HOURS=1` temporarily and delivered a mail with a PDF
+- [ ] Set `RETENTION_HOURS="1"` temporarily by editing `[vars]` in `wrangler.toml` (not the dashboard: deploys overwrite it), ran `pnpm run deploy`, and delivered a mail with a PDF
 - [ ] After two cron runs, the mail and its R2 object are gone
-- [ ] Set `RETENTION_HOURS` back to 72 and redeployed
+- [ ] Reverted `RETENTION_HOURS` to `"72"` in `wrangler.toml` and redeployed (`pnpm run deploy`)
 
 Date: ____
 Result: ____
