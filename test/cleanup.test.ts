@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCleanup } from '../src/cleanup';
 import { parseConfig } from '../src/config';
 import { ingestEmail } from '../src/ingest/ingest';
@@ -94,5 +94,52 @@ describe('runCleanup', () => {
     await runCleanup(env, cfg, now);
     const { results } = await env.DB.prepare('SELECT day FROM daily_stats').all<{ day: string }>();
     expect(results.map((r) => r.day)).toEqual([day(now - 10 * DAY)]);
+  });
+
+  it('rejects promptly and leaves D1 and R2 intact when the R2 delete throws', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const now = Date.now();
+    const oldId = await ingestWithPdf(now - 73 * HOUR, 'old');
+    const failing = {
+      DB: env.DB,
+      BUCKET: {
+        delete: async () => {
+          throw new Error('r2 down');
+        },
+        list: (opts?: R2ListOptions) => env.BUCKET.list(opts),
+      } as unknown as R2Bucket,
+    };
+
+    await expect(runCleanup(failing, cfg, now)).rejects.toThrow('r2 down');
+
+    expect(spy).toHaveBeenCalled();
+    expect(await n('SELECT COUNT(*) AS n FROM messages WHERE id = ?', oldId)).toBe(1);
+    expect(await n('SELECT COUNT(*) AS n FROM attachments WHERE message_id = ?', oldId)).toBe(1);
+    expect(await r2Keys()).toHaveLength(1);
+    spy.mockRestore();
+  });
+
+  it('stops instead of spinning when a batch removes no rows', async () => {
+    const now = Date.now();
+    const oldId = await ingestWithPdf(now - 73 * HOUR, 'old');
+    let listCalls = 0;
+    // D1 deletes silently affect 0 rows, so listExpiredIds keeps returning the same id.
+    const stuck = {
+      DB: {
+        prepare: (sql: string) => {
+          if (sql.includes('FROM messages WHERE expires_at')) listCalls++;
+          return env.DB.prepare(sql);
+        },
+        batch: async (stmts: unknown[]) =>
+          stmts.map(() => ({ results: [], success: true, meta: { changes: 0 } })),
+      } as unknown as D1Database,
+      BUCKET: env.BUCKET,
+    };
+
+    const res = await runCleanup(stuck, cfg, now);
+
+    expect(res.deleted).toBe(0);
+    expect(listCalls).toBe(1);
+    expect(await n('SELECT COUNT(*) AS n FROM messages WHERE id = ?', oldId)).toBe(1);
   });
 });
