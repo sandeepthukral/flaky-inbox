@@ -84,6 +84,15 @@ describe('inbox page', () => {
     expect(p2).toContain('Previous');
   });
 
+  it('clamps absurd page values to page 1', async () => {
+    await put('clamp');
+    for (const bad of ['Infinity', '1e999', '-5', 'abc', '99999999999999999999']) {
+      const res = await SELF.fetch(`${UI}/?domain=${STAGING}&page=${bad}`);
+      expect(res.status).toBe(200);
+      expect(rowIds(await res.text()).length).toBe(1);
+    }
+  });
+
   it('hides expired mail', async () => {
     await put('old', {}, STAGING, Date.now() - 100 * 3_600_000);
     const fresh = await put('fresh');

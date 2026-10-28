@@ -92,11 +92,13 @@ describe('message page', () => {
   it('iframe is sandboxed without allow-scripts', async () => {
     const id = await put('bob', { html: '<script>alert(1)</script><p>hi</p>' });
     const html = await (await SELF.fetch(`${UI}/m/${D}/bob/${id}`)).text();
-    expect(html).toContain('sandbox=""');
+    expect(html).toContain('sandbox="allow-popups allow-popups-to-escape-sandbox"');
     expect(html).not.toContain('allow-scripts');
+    expect(html).not.toContain('allow-same-origin');
     const m = html.match(/srcdoc="([^"]*)"/);
     expect(m).not.toBeNull();
     expect(m![1]).toContain('&lt;script&gt;alert(1)');
+    expect(m![1]).toMatch(/^&lt;base target=&quot;_blank&quot;&gt;/);
     expect(html.replace(m![0], '')).not.toContain('<script>alert(1)');
   });
 
@@ -109,6 +111,9 @@ describe('message page', () => {
     const api = await (
       await SELF.fetch(`${API}/${D}/inboxes/carol/messages/${id}`, { headers: { Authorization: 'stage-token-a' } })
     ).json();
+    // seconds_ago can differ by one between the two requests.
+    delete (shown as Record<string, unknown>).seconds_ago;
+    delete (api as Record<string, unknown>).seconds_ago;
     expect(shown).toEqual(api);
   });
 

@@ -13,7 +13,8 @@ export function parseInboxQuery(
   const domain = cfg.allowedDomains.includes((q.domain ?? '').toLowerCase())
     ? (q.domain ?? '').toLowerCase()
     : (cfg.allowedDomains[0] ?? '');
-  const page = Math.max(1, Math.floor(Number(q.page)) || 1);
+  const n = Math.floor(Number(q.page));
+  const page = Number.isSafeInteger(n) && n >= 1 ? n : 1;
   return { domain, inbox: (q.inbox ?? '').trim().toLowerCase(), page };
 }
 

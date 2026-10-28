@@ -98,7 +98,10 @@ export function MessageView(props: { row: MessageRow; atts: AttachmentRow[]; now
       <div class="panel">
         {row.html_body !== null ? (
           <div id="tab-html" hidden={active !== 'html'}>
-            <iframe sandbox="" srcdoc={row.html_body} title="HTML body"></iframe>
+            <iframe
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              srcdoc={`<base target="_blank">${row.html_body}`}
+             title="HTML body"></iframe>
           </div>
         ) : null}
         <pre id="tab-text" hidden={active !== 'text'}>
