@@ -33,7 +33,7 @@ describe('UI auth', () => {
     expect(res.status).toBe(403);
     expect(res.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
-    expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
+    expect(res.headers.get('Referrer-Policy')).toBe('same-origin');
     expect(res.headers.get('Cache-Control')).toBe('private, no-store');
   });
 

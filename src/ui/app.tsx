@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { parseConfig } from '../config';
 import type { Env } from '../env';
 import { accessJwks, verifyAccessJwt } from './access';
+import { deleteMessages } from '../db/messages';
+import { InboxView, loadInbox, parseInboxQuery, RowsBody, safeBack } from './inbox';
 import { Layout } from './layout';
 
 const CSP =
@@ -15,7 +17,9 @@ export function createUiApp(): Hono<{ Bindings: Env; Variables: { user: string }
     await next();
     c.header('Content-Security-Policy', CSP);
     c.header('X-Content-Type-Options', 'nosniff');
-    c.header('Referrer-Policy', 'no-referrer');
+    // same-origin, not no-referrer: browsers send `Origin: null` on same-site form POSTs under
+    // no-referrer, which the Origin check below would reject.
+    c.header('Referrer-Policy', 'same-origin');
     c.header('Cache-Control', 'private, no-store');
   });
 
@@ -46,13 +50,29 @@ export function createUiApp(): Hono<{ Bindings: Env; Variables: { user: string }
     return next();
   });
 
-  app.get('/', (c) =>
-    c.html(
+  app.get('/', async (c) => {
+    const cfg = parseConfig(c.env);
+    const q = parseInboxQuery(cfg, c.req.query());
+    const data = await loadInbox(c.env.DB, q, Date.now());
+    return c.html(
       <Layout title="Inbox" user={c.get('user')} active="inbox">
-        <p>Inbox coming soon.</p>
+        <InboxView cfg={cfg} q={q} rows={data.rows} total={data.total} now={data.now} />
       </Layout>,
-    ),
-  );
+    );
+  });
+
+  app.get('/rows', async (c) => {
+    const q = parseInboxQuery(parseConfig(c.env), c.req.query());
+    const data = await loadInbox(c.env.DB, q, Date.now());
+    return c.html(<RowsBody rows={data.rows} now={data.now} />);
+  });
+
+  app.post('/delete', async (c) => {
+    const form = await c.req.formData();
+    const ids = [...new Set(form.getAll('ids').filter((v): v is string => typeof v === 'string' && v !== ''))];
+    if (ids.length > 0) await deleteMessages(c.env, ids);
+    return c.redirect(safeBack(form.get('back')), 303);
+  });
 
   return app;
 }
