@@ -25,10 +25,18 @@ export type InboxEntry = {
   seconds_ago: number;
 };
 
+export type AttachmentMeta = {
+  id: string;
+  filename: string | null;
+  contentType: string;
+  size: number;
+  sha256: string;
+};
+
 export type MessageDetail = Omit<InboxEntry, never> & {
   headers: Record<string, string>;
   parts: Array<{ headers: Record<string, string>; body: string }>;
-  attachments: Array<{ id: string; filename: string | null; contentType: string; size: number; sha256: string }>;
+  attachments: AttachmentMeta[];
   skippedAttachments: number;
   attachmentsIncomplete: boolean;
 };
@@ -59,6 +67,10 @@ function parseHeaders(json: string | null): Record<string, string> {
   }
 }
 
+export function toAttachmentMeta(a: AttachmentRow): AttachmentMeta {
+  return { id: a.id, filename: a.filename, contentType: a.content_type, size: a.size, sha256: a.sha256 };
+}
+
 export function toMessageDetail(row: MessageRow, atts: AttachmentRow[], now: number): MessageDetail {
   const parts: MessageDetail['parts'] = [];
   if (row.text_body !== null) {
@@ -71,13 +83,7 @@ export function toMessageDetail(row: MessageRow, atts: AttachmentRow[], now: num
     ...toInboxEntry({ ...row, attachment_count: atts.length } as MessageSummary, now),
     headers: parseHeaders(row.headers_json),
     parts,
-    attachments: atts.map((a) => ({
-      id: a.id,
-      filename: a.filename,
-      contentType: a.content_type,
-      size: a.size,
-      sha256: a.sha256,
-    })),
+    attachments: atts.map(toAttachmentMeta),
     skippedAttachments: row.skipped_attachments,
     attachmentsIncomplete: row.attachments_incomplete === 1,
   };

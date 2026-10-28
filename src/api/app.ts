@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { parseConfig } from '../config';
+import { serveAttachment } from '../attachments';
 import { getMessage, listAttachments, listMessages } from '../db/messages';
 import { bumpStat, type Metric } from '../db/stats';
 import type { Env } from '../env';
 import { extractLinks } from '../links';
-import { toInboxEntry, toMessageDetail } from '../shapes';
+import { toAttachmentMeta, toInboxEntry, toMessageDetail } from '../shapes';
 import { isTokenValid } from './auth';
 
 const PATH_RE = /^\/api\/v2\/domains\/([^/]+)\/inboxes\/[^/]+(?:\/messages\/[^/]+(\/links|\/attachments(?:\/[^/]+)?)?)?\/?$/;
@@ -78,6 +79,28 @@ export function createApiApp(): Hono<{ Bindings: Env }> {
     if (!row) return c.json({ error: 'Not found' }, 404);
     return c.json({ links: extractLinks(row.html_body, row.text_body) });
   });
+
+  app.get('/domains/:domain/inboxes/:inbox/messages/:id/attachments', async (c) => {
+    const domain = c.req.param('domain').toLowerCase();
+    const inbox = c.req.param('inbox').toLowerCase();
+    const row = await getMessage(c.env.DB, domain, inbox, c.req.param('id'), Date.now());
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    const atts = await listAttachments(c.env.DB, row.id);
+    return c.json({
+      attachments: atts.map(toAttachmentMeta),
+      attachmentsIncomplete: row.attachments_incomplete === 1,
+    });
+  });
+
+  app.get('/domains/:domain/inboxes/:inbox/messages/:id/attachments/:attachmentId', (c) =>
+    serveAttachment(c.env, {
+      domain: c.req.param('domain').toLowerCase(),
+      inbox: c.req.param('inbox').toLowerCase(),
+      messageId: c.req.param('id'),
+      attachmentId: c.req.param('attachmentId'),
+      now: Date.now(),
+    }),
+  );
 
   app.notFound((c) => c.json({ error: 'Not found' }, 404));
   app.onError((err, c) => {
