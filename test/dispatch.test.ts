@@ -7,9 +7,10 @@ describe('host dispatch', () => {
     expect(res.status).toBe(404);
   });
 
-  it('routes the API host to the API stub', async () => {
+  it('routes the API host to the API app (JSON 404 for unknown path)', async () => {
     const res = await SELF.fetch('http://127.0.0.1:8787/api/v2/domains');
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'Not found' });
   });
 
   it('routes the UI host to the UI stub', async () => {

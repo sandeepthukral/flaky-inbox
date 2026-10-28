@@ -42,3 +42,12 @@ describe('parseConfig', () => {
     expect(cfg.apiTokens).toEqual({ 'staging.test.example': ['a'] });
   });
 });
+
+describe('parseConfig hosts and tokens', () => {
+  it('trims and lowercases hosts; bad API_TOKENS does not throw', () => {
+    const cfg = parseConfig({ ...baseEnv, API_HOST: ' API.Test:8787 ', UI_HOST: 'UI.Test ', API_TOKENS: '{bad' } as Env);
+    expect(cfg.apiHost).toBe('api.test:8787');
+    expect(cfg.uiHost).toBe('ui.test');
+    expect(cfg.apiTokens).toEqual({});
+  });
+});

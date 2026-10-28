@@ -1,3 +1,4 @@
+import { createApiApp } from './api/app';
 import { parseConfig } from './config';
 import type { Env } from './env';
 import { ingestEmail } from './ingest/ingest';
@@ -22,10 +23,10 @@ export default {
     }
   },
 
-  async fetch(req: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const cfg = parseConfig(env);
     const host = new URL(req.url).host;
-    if (host === cfg.apiHost) return notImplemented(); // API app: later task
+    if (host === cfg.apiHost) return createApiApp().fetch(req, env, ctx);
     if (host === cfg.uiHost) return notImplemented(); // UI app: later task
     return new Response('Not Found', { status: 404 });
   },
