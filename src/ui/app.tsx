@@ -40,7 +40,8 @@ export function createUiApp(): Hono<{ Bindings: Env; Variables: { user: string }
   // Cross-site request protection for anything that changes state.
   app.use('*', async (c, next) => {
     if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
-      if (c.req.header('Origin') !== parseConfig(c.env).uiOrigin) return c.body('Forbidden', 403);
+      const { uiOrigin } = parseConfig(c.env);
+      if (!uiOrigin || c.req.header('Origin') !== uiOrigin) return c.body('Forbidden', 403);
     }
     return next();
   });

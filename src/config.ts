@@ -60,8 +60,8 @@ export function parseConfig(env: Env): Config {
     maxAttachmentBytes: num(env.MAX_ATTACHMENT_BYTES, 5_242_880),
     maxBodyBytes: num(env.MAX_BODY_BYTES, 1_048_576),
     uiAuthMode: env.UI_AUTH_MODE === 'dev' ? 'dev' : 'access',
-    accessTeamDomain: env.ACCESS_TEAM_DOMAIN,
-    accessAud: env.ACCESS_AUD,
+    accessTeamDomain: env.ACCESS_TEAM_DOMAIN?.trim().toLowerCase() || undefined,
+    accessAud: env.ACCESS_AUD?.trim() || undefined,
     apiTokens: parseApiTokens(env.API_TOKENS),
   };
 }

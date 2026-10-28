@@ -47,6 +47,15 @@ describe('verifyAccessJwt', () => {
     expect(out).toBeNull();
   });
 
+  it('rejects a token without exp', async () => {
+    const token = await new SignJWT({ email: 'qa@example.test' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+      .setAudience(AUD)
+      .setIssuer(ISSUER)
+      .sign(privateKey);
+    expect(await verifyAccessJwt(token, { aud: AUD, issuer: ISSUER, jwks })).toBeNull();
+  });
+
   it('rejects null', async () => {
     expect(await verifyAccessJwt(null, { aud: AUD, issuer: ISSUER, jwks })).toBeNull();
   });

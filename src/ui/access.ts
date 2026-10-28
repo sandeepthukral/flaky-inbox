@@ -10,6 +10,7 @@ export async function verifyAccessJwt(
       audience: opts.aud,
       issuer: opts.issuer,
       algorithms: ['RS256'],
+      requiredClaims: ['exp'],
     });
     const email = payload.email;
     return typeof email === 'string' && email !== '' ? { email } : null;
@@ -20,7 +21,14 @@ export async function verifyAccessJwt(
 
 const jwksCache = new Map<string, JWTVerifyGetKey>();
 
+// Test seam only: lets tests supply a local key set instead of fetching Cloudflare's. Never set in production.
+let jwksOverride: ((teamDomain: string) => JWTVerifyGetKey) | null = null;
+export function setAccessJwksOverrideForTest(fn: ((teamDomain: string) => JWTVerifyGetKey) | null): void {
+  jwksOverride = fn;
+}
+
 export function accessJwks(teamDomain: string): JWTVerifyGetKey {
+  if (jwksOverride) return jwksOverride(teamDomain);
   let jwks = jwksCache.get(teamDomain);
   if (!jwks) {
     jwks = createRemoteJWKSet(new URL(`https://${teamDomain}/cdn-cgi/access/certs`));
