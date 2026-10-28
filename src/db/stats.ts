@@ -10,7 +10,7 @@ export type Metric =
   | 'api_attachment'
   | 'api_error';
 
-const METRICS: Metric[] = [
+export const METRICS: Metric[] = [
   'incoming',
   'rejected',
   'accessed_api',

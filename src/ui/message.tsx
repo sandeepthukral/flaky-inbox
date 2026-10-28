@@ -27,37 +27,31 @@ export function MessageView(props: { row: MessageRow; atts: AttachmentRow[]; now
   const active = tabs[0];
   return (
     <>
-      <style>{`
-        .meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0 0 16px; }
-        .meta dt { font-weight: 600; } .meta dd { margin: 0; }
-        .box { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; }
-        .warn { color: #92400e; background: #fef3c7; padding: 6px 10px; border-radius: 4px; margin: 6px 0; }
-        .tabs button { padding: 6px 14px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer; }
-        .tabs button.active { background: #1f2937; color: #fff; }
-        .panel iframe { width: 100%; height: 600px; border: 1px solid #d1d5db; background: #fff; }
-        .panel pre { white-space: pre-wrap; word-break: break-word; border: 1px solid #d1d5db; padding: 10px; }
-      `}</style>
-      <form method="post" action="/delete" id="delete-message-form">
+      <form method="post" action="/delete" id="delete-message-form" class="msghead">
         <input type="hidden" name="ids" value={row.id} />
         <input type="hidden" name="back" value={`/?domain=${row.domain}`} />
-        <p>
-          <a href={`/?domain=${encodeURIComponent(row.domain)}`}>Back to inbox</a>{' '}
-          <button type="submit">Delete</button>
-        </p>
+        <a class="back" href={`/?domain=${encodeURIComponent(row.domain)}`}>
+          ‹ Back to inbox
+        </a>
+        <button type="submit" class="btn danger">
+          Delete
+        </button>
       </form>
-      <h1>{row.subject || '(no subject)'}</h1>
-      <dl class="meta">
-        <dt>To</dt>
-        <dd>{row.to_addr}</dd>
-        <dt>From</dt>
-        <dd>{row.from_addr}</dd>
-        <dt>Received</dt>
-        <dd>{utc(row.received_at)}</dd>
-        <dt>Expires</dt>
-        <dd>{utc(row.expires_at)}</dd>
-      </dl>
-      <div class="box" id="attachments">
-        <strong>Attachments</strong>
+      <div class="card">
+        <h1>{row.subject || '(no subject)'}</h1>
+        <dl class="meta">
+          <dt>To</dt>
+          <dd>{row.to_addr}</dd>
+          <dt>From</dt>
+          <dd>{row.from_addr}</dd>
+          <dt>Received</dt>
+          <dd>{utc(row.received_at)}</dd>
+          <dt>Expires</dt>
+          <dd>{utc(row.expires_at)}</dd>
+        </dl>
+      </div>
+      <div class="card" id="attachments">
+        <h2>Attachments</h2>
         {row.attachments_incomplete === 1 ? (
           <div class="warn">Some attachments could not be stored</div>
         ) : null}
@@ -68,9 +62,9 @@ export function MessageView(props: { row: MessageRow; atts: AttachmentRow[]; now
           </div>
         ) : null}
         {atts.length === 0 ? (
-          <p>None</p>
+          <p class="zero">None</p>
         ) : (
-          <table>
+          <table class="atts">
             <tbody>
               {atts.map((a) => (
                 <tr>
@@ -80,7 +74,9 @@ export function MessageView(props: { row: MessageRow; atts: AttachmentRow[]; now
                     <code>{a.sha256.slice(0, 8)}</code>
                   </td>
                   <td>
-                    <a href={`${base}/a/${encodeURIComponent(a.id)}`}>Download</a>
+                    <a href={`${base}/a/${encodeURIComponent(a.id)}`} class="btn">
+                      Download
+                    </a>
                   </td>
                 </tr>
               ))}
@@ -88,7 +84,7 @@ export function MessageView(props: { row: MessageRow; atts: AttachmentRow[]; now
           </table>
         )}
       </div>
-      <div class="tabs" id="tabs">
+      <div class="msgtabs" id="tabs">
         {tabs.map((t) => (
           <button type="button" data-tab={t} class={t === active ? 'active' : ''}>
             {t.toUpperCase()}

@@ -27,7 +27,9 @@ async function seed(rows: Array<[string, string, string, number]>) {
 function rowCells(html: string, day: string): number[] {
   const row = html.match(new RegExp(`<tr[^>]*data-day="${day}"[^>]*>(.*?)</tr>`, 's'));
   if (!row) throw new Error(`no row for ${day}`);
-  return [...row[1].matchAll(/<td[^>]*>(.*?)<\/td>/gs)].slice(1).map((m) => Number(m[1]));
+  return [...row[1].matchAll(/<td[^>]*>(.*?)<\/td>/gs)]
+    .slice(1)
+    .map((m) => Number(m[1].replace(/<[^>]*>/g, '').replace(/,/g, '')));
 }
 
 beforeEach(async () => {
@@ -79,11 +81,11 @@ describe('stats page', () => {
   it('columns are in the order Date, incoming, accessed, API calls', async () => {
     const html = await (await SELF.fetch(`${UI}/stats`)).text();
     const head = html.match(/<thead>(.*?)<\/thead>/s)![1];
-    const texts = [...head.matchAll(/<th[^>]*>(.*?)<\/th>/gs)].map((m) => m[1].trim());
+    const texts = [...head.matchAll(/<th[^>]*>(.*?)<\/th>/gs)].map((m) => m[1].replace(/<[^>]*>/g, '').trim());
     expect(texts).toEqual([
       'Date',
       'Emails incoming',
-      'Emails accessed',
+      'Emails read',
       'API calls',
       'Stored',
       'Rejected',
@@ -94,6 +96,29 @@ describe('stats page', () => {
       'Attachment',
       'Errors',
     ]);
+  });
+
+  it('Total row and summary cards add up the period', async () => {
+    const html = await (await SELF.fetch(`${UI}/stats?domain=all`)).text();
+    const total = html.match(/<tr[^>]*data-total[^>]*>(.*?)<\/tr>/s);
+    expect(total).not.toBeNull();
+    const cells = [...total![1].matchAll(/<td[^>]*>(.*?)<\/td>/gs)]
+      .slice(1)
+      .map((m) => Number(m[1].replace(/<[^>]*>/g, '')));
+    expect(cells).toEqual([7, 7, 0, 2, 6, 0, 0, 6]);
+    const kpi = (id: string) => html.match(new RegExp(`id="kpi-${id}"[^]*?class="value">([^<]*)<`))?.[1];
+    expect(kpi('received')).toBe('7');
+    expect(kpi('read')).toBe('2');
+    expect(kpi('calls')).toBe('6');
+    expect(kpi('errors')).toBe('6');
+    expect(html).toContain('100% of API calls');
+  });
+
+  it('shows the weekday next to the date and marks errors', async () => {
+    const html = await (await SELF.fetch(`${UI}/stats`)).text();
+    const weekday = new Date(`${today}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' });
+    expect(html).toContain(`<small>${weekday}</small>`);
+    expect(html).toMatch(/class="[^"]*\berr\b[^"]*">6</);
   });
 
   it('dropdown lists allowed domains plus All', async () => {

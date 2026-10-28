@@ -80,7 +80,7 @@ export function toMessageDetail(row: MessageRow, atts: AttachmentRow[], now: num
     parts.push({ headers: { 'content-type': 'text/html; charset=utf-8' }, body: row.html_body });
   }
   return {
-    ...toInboxEntry({ ...row, attachment_count: atts.length } as MessageSummary, now),
+    ...toInboxEntry({ ...row, attachment_count: atts.length, text_head: null }, now),
     headers: parseHeaders(row.headers_json),
     parts,
     attachments: atts.map(toAttachmentMeta),

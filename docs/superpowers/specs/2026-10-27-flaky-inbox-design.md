@@ -198,7 +198,7 @@ Agreed with the user from a clickable mockup ("v2"). It replaces the look and so
 
 **Statistics**
 - Changing the domain dropdown reloads at once (Show button only for no-JS use).
-- Four summary cards over the shown period: emails received (with rejected as a hint), emails read (API + UI, split as a hint), API calls (inbox + message + attachment), API errors (with the share of all API requests; red when above zero).
+- Four summary cards over the shown period: emails received (with rejected as a hint), emails read (API + UI, split as a hint), API calls (inbox + message + attachment), API errors (as a share of API calls: every call is counted in its own column and errors are counted on top; red when above zero).
 - The column group "Emails accessed" is renamed **"Emails read"**. Group headers are coloured pills (blue incoming, green read, violet API) and the numbers under each group use that colour; extra space separates the groups instead of lines.
 - Each date shows its weekday. Zeros are faded, errors above zero are bold red, a small bar in Stored shows the day's volume against the busiest day, and a Total row closes the table.
 

@@ -55,6 +55,57 @@ test.describe('inbox', () => {
   });
 });
 
+test.describe('inbox v2', () => {
+  test('changing the domain loads that domain at once', async ({ page, request }) => {
+    const inbox = `ui-${crypto.randomUUID().slice(0, 8)}`;
+    const to = `${inbox}@prod.test.example`;
+    await deliverMail(request, buildMail({ to, subject: 'Prod only' }), 'orders@sender.example', to);
+    await page.goto(`${UI}/?domain=${STAGING}`);
+    await page.locator('#domain').selectOption('prod.test.example');
+    await expect(page).toHaveURL(/domain=prod\.test\.example/);
+    await expect(page.locator('#rows tr', { hasText: 'Prod only' })).toHaveCount(1);
+  });
+
+  test('rows per page reloads with the new size', async ({ page }) => {
+    await page.goto(`${UI}/?domain=${STAGING}`);
+    await expect(page.locator('#size')).toHaveValue('25');
+    await page.locator('#size').selectOption('100');
+    await expect(page).toHaveURL(/size=100/);
+    await expect(page.locator('#size')).toHaveValue('100');
+  });
+
+  test('typing in the filter applies it after a pause', async ({ page, request }) => {
+    const prefix = `ui-${crypto.randomUUID().slice(0, 8)}`;
+    await send(request, `${prefix}-a`, 'Filtered');
+    await page.goto(`${UI}/?domain=${STAGING}`);
+    await page.locator('#inbox-filter').fill(prefix);
+    await expect(page).toHaveURL(new RegExp(`inbox=${prefix}`));
+    await expect(page.locator('#rows tr[data-id]')).toHaveCount(1);
+  });
+
+  test('selection bar shows the count and Clear unticks', async ({ page, request }) => {
+    const prefix = `ui-${crypto.randomUUID().slice(0, 8)}`;
+    await send(request, `${prefix}-a`, 'Pick me');
+    await page.goto(inboxPage(prefix));
+    await expect(page.locator('#selbar')).toBeHidden();
+    await page.locator('#rows tr[data-id] input[name=ids]').check();
+    await expect(page.locator('#selbar')).toBeVisible();
+    await expect(page.locator('#selcount')).toHaveText('1 selected');
+    await page.locator('#clear-btn').click();
+    await expect(page.locator('#selbar')).toBeHidden();
+    await expect(page.locator('#rows tr[data-id] input[name=ids]')).not.toBeChecked();
+  });
+
+  test('clicking a row outside the links opens the mail', async ({ page, request }) => {
+    const prefix = `ui-${crypto.randomUUID().slice(0, 8)}`;
+    await send(request, `${prefix}-a`, 'Row click');
+    await page.goto(inboxPage(prefix));
+    await page.locator('#rows tr[data-id] td.age').click();
+    await expect(page).toHaveURL(/\/m\//);
+    await expect(page.locator('h1')).toHaveText('Row click');
+  });
+});
+
 test.describe('message page', () => {
   test('tabs switch and LINKS lists the decoded link', async ({ page, request }) => {
     const inbox = `ui-${crypto.randomUUID().slice(0, 8)}`;

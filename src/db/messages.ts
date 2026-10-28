@@ -30,7 +30,7 @@ export type AttachmentRow = {
 export type MessageSummary = Pick<
   MessageRow,
   'id' | 'domain' | 'inbox' | 'from_name' | 'from_addr' | 'to_addr' | 'subject' | 'received_at' | 'expires_at'
-> & { attachment_count: number };
+> & { attachment_count: number; text_head: string | null };
 
 // D1 allows at most 100 bound parameters per statement.
 const ID_CHUNK = 50;
@@ -110,7 +110,7 @@ export async function listMessages(
   const rowsStmt = db
     .prepare(
       `SELECT m.id, m.domain, m.inbox, m.from_name, m.from_addr, m.to_addr, m.subject,
-         m.received_at, m.expires_at,
+         m.received_at, m.expires_at, substr(m.text_body, 1, 400) AS text_head,
          (SELECT COUNT(*) FROM attachments a WHERE a.message_id = m.id) AS attachment_count
        FROM messages m WHERE ${where}
        ORDER BY m.received_at DESC, m.id DESC LIMIT ? OFFSET ?`,
