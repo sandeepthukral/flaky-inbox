@@ -132,6 +132,8 @@ describe('attachments', () => {
     expect(await getAttachmentForMessage(env.DB, 'prod.test.example', 'alice', 'A', 'attA1', NOW)).toBeNull();
     expect(await getAttachmentForMessage(env.DB, d, 'alice', 'A', 'attA1', NOW + 99_999)).not.toBeNull();
     expect(await getAttachmentForMessage(env.DB, d, 'alice', 'A', 'attA1', NOW + 100_000)).toBeNull();
+    expect(await getAttachmentForMessage(env.DB, d, 'bob', 'A', 'attA1', NOW)).toBeNull();
+    expect((await getAttachmentForMessage(env.DB, d, 'bob', 'B', 'attB', NOW))?.r2_key).toBe('B/1');
     expect(await getAttachmentForMessage(env.DB, d, 'bob', 'B', 'attB', NOW + 50)).toBeNull();
   });
 });
