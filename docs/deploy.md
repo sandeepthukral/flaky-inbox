@@ -23,7 +23,7 @@ public.
 | 6 | Custom domains for API and UI | done |
 | 7 | Email Routing | done |
 | 8 | Check the API by hand | done |
-| 9 | Cloudflare Access for the UI | secrets set, UI check pending |
+| 9 | Cloudflare Access for the UI | done |
 | 10 | CPU measurement | in progress |
 | 11 | CI deploys | not started |
 | 12 | Live acceptance (`docs/acceptance.md`) | not started |
