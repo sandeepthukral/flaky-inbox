@@ -3,6 +3,25 @@
 export const clientScript = `
 'use strict';
 (function () {
+  var tabs = document.getElementById('tabs');
+  if (tabs) {
+    tabs.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('button[data-tab]') : null;
+      if (!btn) return;
+      Array.prototype.forEach.call(tabs.querySelectorAll('button[data-tab]'), function (b) {
+        var on = b === btn;
+        b.classList.toggle('active', on);
+        var panel = document.getElementById('tab-' + b.getAttribute('data-tab'));
+        if (panel) panel.hidden = !on;
+      });
+    });
+  }
+  var delOne = document.getElementById('delete-message-form');
+  if (delOne) {
+    delOne.addEventListener('submit', function (e) {
+      if (!window.confirm('Delete 1 mail and its attachments?')) e.preventDefault();
+    });
+  }
   var tbody = document.getElementById('rows');
   var form = document.getElementById('delete-form');
   if (!tbody || !form) return;
