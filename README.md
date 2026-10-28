@@ -53,11 +53,12 @@ curl -H 'Authorization: stage-token-a' http://127.0.0.1:8787/api/v2/domains/stag
 
 Do these in order. Nothing here is automated.
 
-1. **Domain.** Buy `flaky-tests.uk` at Cloudflare Registrar so DNS is already on Cloudflare. The bare
-   domain gets no Worker route; mail to `*@flaky-tests.uk` itself is bounced.
-2. **Email Routing.** Enable it for `ecom-staging.flaky-tests.uk` and `ecom-production.flaky-tests.uk`
-   and add a catch-all rule "Send to Worker" (this Worker). Whether one catch-all covers both
-   subdomains or each subdomain needs its own rule: _not yet recorded_. Write down what you found here.
+1. **Domain.** Add `flaky-tests.uk` to the Cloudflare account (Free plan) and point the registrar's
+   nameservers at Cloudflare, or buy it at Cloudflare Registrar. Wait until the zone is Active. The
+   bare domain gets no Worker route.
+2. **Account prerequisites.** Enable R2 (Storage → R2, free tier; asks for a payment method). Open
+   Workers & Pages once so the account gets a `workers.dev` subdomain: cron triggers fail to deploy
+   without one (error 10063), even though this Worker has `workers_dev = false`.
 3. **Storage and deploy.**
    ```sh
    pnpm exec wrangler d1 create flaky-inbox        # put the printed database_id in wrangler.toml
@@ -68,8 +69,14 @@ Do these in order. Nothing here is automated.
    ```
    `wrangler.toml` sets `workers_dev = false` and `preview_urls = false`. Check in the dashboard that
    the `workers.dev` route is off. Do the CPU measurement below before choosing the attachment cap.
-4. **Custom domains.** Attach `mail-api.flaky-tests.uk` and `mailinat.flaky-tests.uk` to the Worker.
-5. **Access.** In Zero Trust, create a self-hosted application for `mailinat.flaky-tests.uk` with an
+4. **Email Routing.** Enable it on `flaky-tests.uk`, then add `ecom-staging` and
+   `ecom-production` under Settings → Subdomains. Edit the catch-all rule to "Send to a Worker" →
+   this Worker **and switch it on** (it is off by default; while it is off, mail bounces with
+   `550 5.1.1 Address does not exist`). Verified 2026-10-28: the one catch-all on the apex covers
+   both subdomains; no per-subdomain rules are needed. Mail to other domains (the bare apex) is
+   accepted and dropped by the Worker and counted as rejected.
+5. **Custom domains.** Attach `mail-api.flaky-tests.uk` and `mailinat.flaky-tests.uk` to the Worker.
+6. **Access.** In Zero Trust, create a self-hosted application for `mailinat.flaky-tests.uk` with an
    allow policy and one-time-code login; add your allowed addresses in the dashboard. Set the team
    domain and the application AUD on the Worker as Wrangler **secrets**, not dashboard variables:
    `pnpm exec wrangler secret put ACCESS_TEAM_DOMAIN` and `pnpm exec wrangler secret put ACCESS_AUD`.
@@ -78,7 +85,7 @@ Do these in order. Nothing here is automated.
    itself against `https://<team>.cloudflareaccess.com` certs and the AUD, and fails closed when
    either var is missing or the token is invalid. **Access service tokens are refused**: a JWT without
    an `email` claim gets no access, so the UI is for humans only.
-6. **Real mail check.** Send a real mail with a real PDF, fetch it through the API and the UI and
+7. **Real mail check.** Send a real mail with a real PDF, fetch it through the API and the UI and
    compare the SHA-256. Outcome: _not yet recorded_.
 
 ### API tokens
