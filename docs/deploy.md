@@ -205,14 +205,27 @@ one-time code. The allowed addresses live in the dashboard policy, never in this
    - Login methods: tick **One-time PIN** (optionally untick Cloudflare so there is one login screen).
    - Policy `QA team`, action **Allow**, Include rules (any one matches):
      **Emails ending in** `@action.nl`, plus an **Emails** rule for each personal address.
-   - Save, open the application again and copy the **Application Audience (AUD) Tag**.
-4. **Worker secrets.** Store both as secrets, not dashboard variables (a deploy wipes dashboard
+   - Save.
+   - Where these are: in the Zero Trust sidebar, **Access controls** (expand it with `>`) →
+     **Applications** → the blue **Add an application** / **Create new application** button →
+     **Self-hosted** (may be called **Self-hosted and private**).
+4. **AUD tag.** The dashboard is supposed to show the **Application Audience (AUD) Tag** on the
+   application's Overview tab, but on 2026-10-28 it could not be found there. Reliable way: get it
+   from the Access cookie.
+   1. Open `https://mailinat.flaky-tests.uk` in a private window and log in with the emailed code.
+      The page after login may show an error; that is fine, the Worker secrets are not set yet.
+   2. DevTools → **Application** → **Cookies** → `https://mailinat.flaky-tests.uk`, copy the value
+      of `CF_Authorization`.
+   3. Decode it (for example at jwt.io; it is a short-lived login token for your own session). The
+      `aud` field is the AUD tag: a 64-character hex string, sometimes shown inside `[ ]`; copy only
+      the string.
+5. **Worker secrets.** Store both as secrets, not dashboard variables (a deploy wipes dashboard
    variables):
    ```sh
    pnpm exec wrangler secret put ACCESS_TEAM_DOMAIN   # <team>.cloudflareaccess.com, host only, no https://
    pnpm exec wrangler secret put ACCESS_AUD           # the AUD tag
    ```
-5. Check in a private window: `https://mailinat.flaky-tests.uk` shows the Access login, an allowed
+6. Check in a private window: `https://mailinat.flaky-tests.uk` shows the Access login, an allowed
    address gets a code by email and then sees the inbox UI, and an address outside the policy is
    refused.
 
