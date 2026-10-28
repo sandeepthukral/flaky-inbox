@@ -13,7 +13,7 @@ crons = ["0 * * * *"]
 binding = "DB"
 database_name = "flaky-inbox"
 # Placeholder: replace with the real id from `wrangler d1 create flaky-inbox` at deploy time.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "13cc8297-0732-436b-a868-f7b27723e5fb"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
