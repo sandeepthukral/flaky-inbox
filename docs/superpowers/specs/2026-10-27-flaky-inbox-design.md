@@ -99,7 +99,11 @@ Cron (hourly) -> Worker scheduled() -> delete expired mail (R2 first, then D1), 
 
 ## 6. API (`mail-api.flaky-tests.uk/api/v2`)
 
-**Auth:** every request must send `Authorization: <API_TOKEN>`, the bare token with no `Bearer ` prefix, exactly as the helper sends it today. Compare in constant time. A missing or wrong token gets `401`. `?token=` is not supported (the helper doesn't use it).
+**Auth: one token per mail subdomain.** Every request must send `Authorization: <token>`, the bare token with no `Bearer ` prefix, exactly as the helper sends it today. `?token=` is not supported (the helper doesn't use it).
+- Each mail subdomain has its own tokens. A staging token reads only `ecom-staging.flaky-tests.uk`, a production token reads only `ecom-production.flaky-tests.uk`. A leak exposes one side, and only that side's token needs replacing.
+- Each domain accepts up to two tokens at once, so a token can be replaced without breaking test runs: add the new one, switch CI and `.env.local` files over, then remove the old one.
+- The token is checked against the `{domain}` in the URL. A missing token, a wrong token, or a valid token for the other domain all get the same `401`. Compare in constant time.
+- Tokens live in one Wrangler secret, `API_TOKENS`, holding JSON like `{"ecom-staging.flaky-tests.uk": ["<token>", "<token>"], "ecom-production.flaky-tests.uk": ["<token>"]}`. A domain in `ALLOWED_DOMAINS` with no token can't be read through the API. Generate tokens as at least 32 random bytes.
 
 **Common rules**
 
@@ -150,7 +154,7 @@ If the R2 object is missing, or its size differs from the stored size, return 50
 
 ## 7. Web UI (`mailinat.flaky-tests.uk`)
 
-**Who gets in:** the QA team only. Cloudflare Access (Zero Trust free plan, up to 50 users) protects the whole hostname with an email one-time-code login. The allow rule (for example, emails ending in `@action.nl`) lives in the Cloudflare dashboard, not in the repo. The Worker also verifies the `Cf-Access-Jwt-Assertion` header against the Access team's public keys and the application's AUD tag on every UI request. If that check fails or isn't configured, the request is refused (fail closed). For local development only, `UI_AUTH_MODE=dev` in `.dev.vars` skips the check. The deployed config is always `access`.
+**Who gets in:** Cloudflare Access (Zero Trust free plan, up to 50 users) protects the whole hostname with an email one-time-code login. The allow policy is decided by the user: any `@action.nl` address, plus two named personal addresses belonging to the user. The policy lives only in the Cloudflare dashboard, and the personal addresses are never written into the repo. Note that this lets any Action employee with an `@action.nl` mailbox in, not only QA. Each person who logs in uses one of the 50 free seats. The Worker also verifies the `Cf-Access-Jwt-Assertion` header against the Access team's public keys and the application's AUD tag on every UI request. If that check fails or isn't configured, the request is refused (fail closed). For local development only, `UI_AUTH_MODE=dev` in `.dev.vars` skips the check. The deployed config is always `access`.
 
 **How it's built (my call):** pages are rendered on the server by the same Worker, with a little plain JavaScript for auto-refresh, checkboxes and confirm dialogs. No frontend framework and no separate build. A small router (for example Hono with its JSX) is fine. UI pages read D1 directly through the same data layer as the API, not through the API itself.
 
@@ -254,7 +258,9 @@ Variables (`wrangler.toml`):
 - `UI_AUTH_MODE` (`access`; `dev` only in `.dev.vars`)
 - `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`: not secret, but set them in the dashboard or CI rather than committing them if you'd rather keep them out of the public repo
 
-Secrets: `API_TOKEN` (Wrangler secret), plus a Cloudflare API token for CI deploys (GitHub secret). Bindings: D1 database and R2 bucket. The R2 bucket is private, with no public access and no `r2.dev` URL.
+Secrets: `API_TOKENS` (Wrangler secret, one or two tokens per mail subdomain, see section 6), plus a Cloudflare API token for CI deploys (GitHub secret).
+
+No side doors: set `workers_dev = false` and turn off preview URLs in `wrangler.toml`, so the Worker answers only on its custom hostnames and the email route. The Worker still refuses any `Host` other than `API_HOST` and `UI_HOST`. Bindings: D1 database and R2 bucket. The R2 bucket is private, with no public access and no `r2.dev` URL.
 
 The public repo contains no tokens, no account ids, no allowed-email rules and no real mail. Test fixtures use made-up mails and a generated sample PDF.
 
@@ -269,6 +275,7 @@ Cost: the goal is zero running cost on the user's personal Cloudflare account; t
   - Mail A's attachment id under mail B's URL returns 404. The wrong domain or inbox returns 404.
   - Two `invoice.pdf` files in one mail are both stored, distinct and downloadable.
   - A missing or wrong token returns 401. A `Bearer <token>` value also returns 401, so the helper's format is the one that's tested.
+  - A staging token used on the production domain returns 401, and so does the reverse. Both of a domain's two tokens work.
   - Links come back from the right message, from both the HTML and text bodies, with `&amp;` decoded.
   - An empty inbox returns 200 with `msgs: []`.
   - Expired mail is hidden on read, and cleanup removes both its D1 rows and its R2 objects.
@@ -293,9 +300,9 @@ Cost: the goal is zero running cost on the user's personal Cloudflare account; t
 
 1. Buy `flaky-tests.uk` at Cloudflare Registrar on the user's personal Cloudflare account, so DNS is already on Cloudflare.
 2. Email Routing: enable it for `ecom-staging.flaky-tests.uk` and `ecom-production.flaky-tests.uk`, and add a catch-all rule "Send to Worker". The builder checks whether one catch-all covers both subdomains or each needs its own rule.
-3. Create the D1 database and the private R2 bucket, run migrations, set `API_TOKEN`, and deploy.
+3. Create the D1 database and the private R2 bucket, run migrations, set `API_TOKENS` (one token per mail subdomain), and deploy. Check the dashboard shows the `workers.dev` route turned off.
 4. Attach the custom domains `mail-api.flaky-tests.uk` and `mailinat.flaky-tests.uk` to the Worker.
-5. Zero Trust: create an Access application for `mailinat.flaky-tests.uk` with an allow rule for the QA team's emails, then copy the team domain and AUD into the Worker config.
+5. Zero Trust: create an Access application for `mailinat.flaky-tests.uk` with an allow policy for emails ending in `@action.nl` plus the user's two personal addresses, then copy the team domain and AUD into the Worker config.
 6. Send a real mail with a real PDF, then fetch it through the API and the UI and compare checksums.
 
 ## 15. Follow-up outside this repo (not part of this build)
@@ -303,12 +310,12 @@ Cost: the goal is zero running cost on the user's personal Cloudflare account; t
 In `action/web`:
 - Point `testConfig.mailinator.apiBaseUrl` at `https://mail-api.flaky-tests.uk/api/v2`.
 - Point `testConfig.mailinator.domain` at the right mail subdomain per environment.
-- Set `MAILINATOR_API_KEY` to the new token, then switch any hard-coded `ecomstaging.testinator.email` addresses.
+- Set `MAILINATOR_API_KEY` to the staging token for staging runs and the production token for production runs, then switch any hard-coded `ecomstaging.testinator.email` addresses.
 - Add `getAttachments` and `downloadAttachment` to the helper when tests need PDFs.
 
 ## 16. Calls made without the user (check these)
 
-- One Worker serves the API and UI on two hostnames, and one token covers all domains.
+- One Worker serves the API and UI on two hostnames. The user then chose one token per mail subdomain, two tokens allowed during a swap, and `workers.dev` turned off.
 - R2 writes first, then one D1 batch as the commit point (the handover suggested inserting the message row first). If R2 fails, the mail is still stored, flagged `attachments_incomplete`, so a mail is never lost over a PDF.
 - PDF check: `%PDF-` magic bytes plus either a PDF content type or a `.pdf` name. Per-attachment cap of 5 MB.
 - The inbox list returns 200 with `msgs: []` for an unknown inbox.
