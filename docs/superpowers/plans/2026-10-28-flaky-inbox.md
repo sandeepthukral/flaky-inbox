@@ -486,6 +486,29 @@ Config: `webServer: { command: 'pnpm wrangler dev --port 8787 --persist-to .wran
 
 ---
 
+### Task 15: Live acceptance gate (needs the user) — before any `action/web` change
+
+Nothing in `action/web` changes until every box below is ticked on the deployed service. This plan never edits `action/web`; spec §15 is a separate, later piece of work that starts only after this gate.
+
+**Files:**
+- Create: `e2e/live.spec.ts` (skipped unless `LIVE_API_BASE`, `LIVE_DOMAIN` and `MAILINATOR_API_KEY` are set), `docs/acceptance.md` (results log)
+
+- [ ] **Step 1: Write `e2e/live.spec.ts`**, reusing the copied `MailinatorClient` unchanged, pointed at `LIVE_API_BASE` (`https://mail-api.flaky-tests.uk/api/v2`) and `LIVE_DOMAIN`. It reads an inbox given in `LIVE_INBOX` and asserts: `getMessages` returns ≥ 1 mail with the helper's fields; `waitForLinkStartingWith(LIVE_INBOX, LIVE_LINK_PREFIX)` resolves; if `LIVE_EXPECT_PDF=1`, the attachment list has ≥ 1 PDF and its download's SHA-256 equals the listed `sha256`.
+- [ ] **Step 2: Real sign-up mail.** The user registers a new account on Action staging by hand with `accept-<date>@ecom-staging.flaky-tests.uk`. Run `live.spec.ts` with that inbox and the Gigya verification prefix → PASS. Open the verification link from the UI's LINKS tab in a browser and confirm the account gets verified (proves the link is byte-exact).
+- [ ] **Step 3: Real order with invoice.** The user places a staging order to an `ecom-staging` address. Run `live.spec.ts` with `LIVE_EXPECT_PDF=1` → PASS. Open the PDF from the UI and check that it opens.
+- [ ] **Step 4: Production domain.** Send one mail to an `ecom-production` address. Confirm it's readable with the production token, that the staging token gets 401 on it, and that it never shows under the staging domain in the API or the UI.
+- [ ] **Step 5: Security checks against the live service:**
+  - `curl https://mail-api.flaky-tests.uk/api/v2/domains/ecom-staging.flaky-tests.uk/inboxes/x` without a token → 401.
+  - `https://mailinat.flaky-tests.uk` in a private window → Access login page.
+  - An address outside the allow policy can't log in.
+  - The `*.workers.dev` URL doesn't respond.
+  - The R2 bucket has public access off.
+- [ ] **Step 6: Cleanup works live.** Set `RETENTION_HOURS=1` temporarily, deliver a mail with a PDF, wait for two cron runs, and confirm the mail and its R2 object are gone. Then set it back to 72 and redeploy.
+- [ ] **Step 7: Stats.** The UI stats page shows the incoming, accessed and API-call counts from the steps above, under the right domain.
+- [ ] **Step 8: Record and commit.** Write each step's date and result in `docs/acceptance.md` and commit `docs: live acceptance results`. Report to the user that the service is proven and that the `action/web` switch-over (spec §15) can start as its own piece of work.
+
+---
+
 ## Self-review notes
 
 - Spec coverage: §3 hosts → T1; §5 → T4; CPU spike §13.2 → T5; §6 → T6, T7; §7 → T10–T12; §8 → T8; §9 → T2 (counters), T6/T7/T12 (bumps), T13 (page); §10 → T1; §11 → T1, T14; §12 → T2–T13 (Vitest), T9, T11–T13 (Playwright); §14 → T5, T14; §15 is out of scope (README only).
