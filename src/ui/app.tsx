@@ -8,6 +8,7 @@ import { bumpStat } from '../db/stats';
 import { InboxView, loadInbox, parseInboxQuery, RowsBody, safeBack } from './inbox';
 import { Layout } from './layout';
 import { MessageView } from './message';
+import { loadStats, parseStatsDomain, StatsView } from './stats';
 
 const CSP =
   "default-src 'self'; script-src 'self' 'unsafe-inline'; img-src * data:; style-src 'self' 'unsafe-inline'; frame-src 'self' about:; frame-ancestors 'none'";
@@ -68,6 +69,17 @@ export function createUiApp(): Hono<{ Bindings: Env; Variables: { user: string }
     const q = parseInboxQuery(parseConfig(c.env), c.req.query());
     const data = await loadInbox(c.env.DB, q, Date.now());
     return c.html(<RowsBody rows={data.rows} now={data.now} />);
+  });
+
+  app.get('/stats', async (c) => {
+    const cfg = parseConfig(c.env);
+    const domain = parseStatsDomain(cfg, c.req.query('domain'));
+    const rows = await loadStats(c.env.DB, cfg, domain, Date.now());
+    return c.html(
+      <Layout title="Statistics" user={c.get('user')} active="stats">
+        <StatsView cfg={cfg} domain={domain} rows={rows} />
+      </Layout>,
+    );
   });
 
   app.get('/m/:domain/:inbox/:id', async (c) => {

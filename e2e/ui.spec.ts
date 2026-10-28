@@ -114,3 +114,13 @@ test.describe('message page', () => {
     );
   });
 });
+
+test.describe('statistics page', () => {
+  test('shows Stored >= 1 after delivering a mail', async ({ page, request }) => {
+    await send(request, `ui-${crypto.randomUUID().slice(0, 8)}`, 'Stats');
+    await page.goto(`${UI}/stats?domain=${STAGING}`);
+    await expect(page.getByRole('columnheader', { name: 'Stored' })).toBeVisible();
+    const stored = Number(await page.locator('#stats tbody tr[data-day] td').nth(1).innerText());
+    expect(stored).toBeGreaterThanOrEqual(1);
+  });
+});
