@@ -176,6 +176,32 @@ Downloads in the UI go through a UI route with the same integrity checks as the 
 
 **Delete:** a POST from the UI. Remove the R2 objects first, then the attachment rows, then the message row, the same order as cleanup. Reject the POST unless its `Origin` header is `https://mailinat.flaky-tests.uk` (cross-site request protection). Deleted mail still counts in that day's `incoming`.
 
+### 7.1 UI v2 (agreed 2026-10-28)
+
+Agreed with the user from a clickable mockup ("v2"). It replaces the look and some behaviour above; anything not mentioned here stays as described above.
+
+**Look**
+- One shared stylesheet in the layout, with colour tokens and a dark version that follows the system setting. System fonts only, all CSS and JS inline: the CSP stays as it is (no outside fonts, scripts or images).
+- Soft gradient page background; a floating, slightly see-through top bar with a gradient logo and Inbox / Statistics as a pill switch; the signed-in address on the right.
+- **No table lines anywhere.** Rows are separate rounded strips with a small gap between them; columns are carried by small uppercase header labels and consistent alignment. Hover lifts a row; ticked rows are tinted.
+- Controls (dropdowns, search box, page buttons) are filled shapes without borders.
+- The message page uses the same look (cards, pill-shaped tabs, buttons); its content and behaviour are unchanged.
+
+**Inbox**
+- Changing the domain dropdown loads that domain's mail at once, page 1. The inbox filter applies after a short pause in typing, or on Enter. A submit button stays in the form for browsers without JavaScript (visually hidden).
+- Page size: query parameter `size`, one of 25, 50, 100; default **25**; anything else falls back to 25. Chosen with a "Rows per page" dropdown below the list, which reloads at page 1. `size` is kept in every inbox link (pages, refresh, delete's return address) when it isn't 25.
+- Below the list: "Showing 26–50 of 63" and a pager: previous, numbered pages (first, last and the two around the current page, with "…" for gaps), next.
+- Title shows the total count as a badge. A green "Live" badge shows the list refreshes itself (still every 10 s, still keeping ticked boxes).
+- Row: inbox name as a tinted label; sender as a coloured initials circle (colour picked from the sender address), name and address; subject followed by a greyed preview of the plain-text body (first 140 characters, whitespace collapsed; empty for HTML-only mail); a red "PDF · n" badge or a faint dash; received time ("5 min ago", "just now"), exact UTC time on hover. Mail younger than 5 minutes gets a "NEW" tag.
+- The whole row opens the message; the cells keep real links for no-JS use and middle-click.
+- The delete button moves into a selection bar that only appears when something is ticked: "N selected · Clear · Delete selected", same confirm dialog as before.
+
+**Statistics**
+- Changing the domain dropdown reloads at once (Show button only for no-JS use).
+- Four summary cards over the shown period: emails received (with rejected as a hint), emails read (API + UI, split as a hint), API calls (inbox + message + attachment), API errors (with the share of all API requests; red when above zero).
+- The column group "Emails accessed" is renamed **"Emails read"**. Group headers are coloured pills (blue incoming, green read, violet API) and the numbers under each group use that colour; extra space separates the groups instead of lines.
+- Each date shows its weekday. Zeros are faded, errors above zero are bold red, a small bar in Stored shows the day's volume against the busiest day, and a Total row closes the table.
+
 ## 8. Retention and cleanup
 
 - `RETENTION_HOURS` defaults to 72 (3 days, the user's choice for now). It's one setting covering mail and attachments on every domain, and can be raised later without code changes.
