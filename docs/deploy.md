@@ -23,8 +23,8 @@ public.
 | 6 | Custom domains for API and UI | done |
 | 7 | Email Routing | done |
 | 8 | Check the API by hand | done |
-| 9 | Cloudflare Access for the UI | in progress |
-| 10 | CPU measurement | not started |
+| 9 | Cloudflare Access for the UI | secrets set, UI check pending |
+| 10 | CPU measurement | in progress |
 | 11 | CI deploys | not started |
 | 12 | Live acceptance (`docs/acceptance.md`) | not started |
 
@@ -231,10 +231,30 @@ one-time code. The allowed addresses live in the dashboard policy, never in this
 
 ## 10. CPU measurement
 
-The free plan allows about 10 ms CPU per call. Follow README, "CPU measurements": `pnpm cpu-sample`,
-send the three sample mails to `cpu-test@ecom-staging.flaky-tests.uk`, read `cpuTime` from
-`pnpm exec wrangler tail --format json`, fill in the table and set the attachment caps in
-`wrangler.toml`.
+The free plan allows about 10 ms CPU per call. The result goes in the README table ("CPU
+measurements") and decides `MAX_ATTACHMENT_BYTES` / `MAX_MESSAGE_BYTES` in `wrangler.toml`.
+
+1. Create the sample mails:
+   ```sh
+   pnpm cpu-sample
+   ```
+   This **only writes files**, it sends nothing: `tmp/cpu-sample-60k.eml`, `tmp/cpu-sample-1m.eml`
+   and `tmp/cpu-sample-5m.eml` (about 83 KB, 1.4 MB and 6.8 MB), each addressed to
+   `cpu-test@ecom-staging.flaky-tests.uk` with an `invoice.pdf`.
+2. Start the log tail **before** sending; it only shows calls made while it runs:
+   ```sh
+   pnpm exec wrangler tail --format pretty
+   ```
+   Use `--format json` (fields `cpuTime` and `outcome`) if the pretty format leaves out CPU time.
+3. Send each file with Apple Mail (needs a mail account set up in Mail.app): double-click the
+   `.eml`, then **Message → Send Again** (⇧⌘D), pick your own address as From and send. The
+   recipient and attachment are already filled in.
+4. Each mail gives one line in the tail: note CPU time and outcome (`ok` or `exceededCpu`). Other
+   places to check: **Workers & Pages → flaky-inbox → Metrics** (CPU time) and **Email Routing →
+   Activity log** (was the mail delivered to the Worker).
+5. Fill in the README table. Set `MAX_ATTACHMENT_BYTES` to the largest size that stays inside the
+   limit with headroom and `MAX_MESSAGE_BYTES` to match (base64 adds about a third), then
+   `pnpm run deploy`.
 
 ## 11. CI deploys
 
