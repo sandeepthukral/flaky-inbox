@@ -1,0 +1,37 @@
+{
+  "name": "flaky-inbox",
+  "version": "0.1.0",
+  "description": "Cloudflare Worker that replaces Mailinator: catch-all inbound mail to D1/R2, Mailinator-v2-compatible API, small web UI",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.15.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.15.0",
+  "type": "module",
+  "dependencies": {
+    "hono": "^4.13.14",
+    "jose": "^6.2.13",
+    "postal-mime": "^4.1.4"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.8",
+    "@cloudflare/workers-types": "^5.20261027.1",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.19.2",
+    "pdf-lib": "^1.17.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.153.0"
+  },
+  "private": true
+}
