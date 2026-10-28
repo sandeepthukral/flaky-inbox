@@ -13,8 +13,8 @@ describe('host dispatch', () => {
     expect(await res.json()).toEqual({ error: 'Not found' });
   });
 
-  it('routes the UI host to the UI stub', async () => {
+  it('routes the UI host to the UI app', async () => {
     const res = await SELF.fetch('http://localhost:8787/');
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(200);
   });
 });

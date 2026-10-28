@@ -3,8 +3,7 @@ import { runCleanup } from './cleanup';
 import { parseConfig } from './config';
 import type { Env } from './env';
 import { ingestEmail } from './ingest/ingest';
-
-const notImplemented = () => new Response('Not Implemented', { status: 501 });
+import { createUiApp } from './ui/app';
 
 export default {
   async email(message: ForwardableEmailMessage, env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -28,7 +27,7 @@ export default {
     const cfg = parseConfig(env);
     const host = new URL(req.url).host;
     if (host === cfg.apiHost) return createApiApp().fetch(req, env, ctx);
-    if (host === cfg.uiHost) return notImplemented(); // UI app: later task
+    if (host === cfg.uiHost) return createUiApp().fetch(req, env, ctx);
     return new Response('Not Found', { status: 404 });
   },
 
