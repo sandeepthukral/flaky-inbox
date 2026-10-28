@@ -32,6 +32,16 @@ function toHex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Best effort: a failed cleanup is logged (the orphan sweep removes stray objects later).
+async function cleanup(bucket: IngestDeps['bucket'], keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  try {
+    await bucket.delete(keys);
+  } catch (e) {
+    console.error('R2 cleanup failed', e);
+  }
+}
+
 export async function ingestEmail(
   input: IngestInput,
   deps: IngestDeps,
@@ -70,11 +80,11 @@ export async function ingestEmail(
     candidates.push({ bytes, filename: a.filename, mimeType: a.mimeType });
   }
   const kept = candidates
-    .slice(0, cfg.maxAttachments)
-    .filter((c) => c.bytes.length <= cfg.maxAttachmentBytes);
+    .filter((c) => c.bytes.length <= cfg.maxAttachmentBytes)
+    .slice(0, cfg.maxAttachments);
   const skipped = candidates.length - kept.length;
 
-  const written: string[] = [];
+  const attempted: string[] = []; // recorded before put(): a put that throws may still have landed
   const rows: AttachmentRow[] = [];
   let incomplete = false;
   try {
@@ -82,11 +92,11 @@ export async function ingestEmail(
       const attId = crypto.randomUUID();
       const key = `${id}/${attId}`;
       const sha256 = toHex(await crypto.subtle.digest('SHA-256', c.bytes));
+      attempted.push(key);
       await deps.bucket.put(key, c.bytes, {
         httpMetadata: { contentType: 'application/pdf' },
         customMetadata: { messageId: id },
       });
-      written.push(key);
       rows.push({
         id: attId,
         message_id: id,
@@ -99,9 +109,7 @@ export async function ingestEmail(
     }
   } catch (err) {
     console.error('R2 write failed; storing mail without attachments', err);
-    // The failing put may have partly landed, so delete every key we attempted, best effort.
-    await deps.bucket.delete(written).catch(() => {});
-    written.length = 0;
+    await cleanup(deps.bucket, attempted);
     rows.length = 0;
     incomplete = true;
   }
@@ -127,7 +135,7 @@ export async function ingestEmail(
   try {
     await insertMessage(deps.db, msg, rows);
   } catch (err) {
-    if (written.length > 0) await deps.bucket.delete(written).catch(() => {});
+    await cleanup(deps.bucket, attempted);
     throw err;
   }
   await bumpStat(deps.db, domain, 'incoming', now);

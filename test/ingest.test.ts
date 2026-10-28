@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseConfig } from '../src/config';
 import { type IngestDeps, ingestEmail } from '../src/ingest/ingest';
 import { buildMail, makePdf } from './mail-builder';
@@ -137,6 +137,19 @@ describe('ingestEmail', () => {
     expect(await env.DB.prepare('SELECT skipped_attachments AS s FROM messages').first()).toEqual({ s: 1 });
   });
 
+  it('applies the count cap after the size filter', async () => {
+    const huge = new Uint8Array(5000);
+    huge.set(await makePdf('huge'));
+    const ok = [await makePdf('ok1'), await makePdf('ok2')];
+    const raw = buildMail({
+      to: TO,
+      attachments: [pdfAtt('huge.pdf', huge), pdfAtt('ok1.pdf', ok[0]), pdfAtt('ok2.pdf', ok[1])],
+    });
+    await ingestEmail(input(raw), deps, { ...cfg, maxAttachments: 2, maxAttachmentBytes: 4000 }, NOW);
+    expect(await count('attachments')).toBe(2);
+    expect(await env.DB.prepare('SELECT skipped_attachments AS s FROM messages').first()).toEqual({ s: 1 });
+  });
+
   it('rejects oversize without writing anything', async () => {
     const raw = buildMail({ to: TO, attachments: [pdfAtt('a.pdf', await makePdf('a'))] });
     const out = await ingestEmail(input(raw, { rawSize: cfg.maxMessageBytes + 1 }), deps, cfg, NOW);
@@ -163,8 +176,9 @@ describe('ingestEmail', () => {
     let puts = 0;
     const bucket: IngestDeps['bucket'] = {
       put: (async (...args: Parameters<R2Bucket['put']>) => {
-        if (++puts === 2) throw new Error('R2 down');
-        return env.BUCKET.put(...args);
+        const r = await env.BUCKET.put(...args);
+        if (++puts === 2) throw new Error('R2 down after write'); // landed, then failed
+        return r;
       }) as R2Bucket['put'],
       delete: ((keys: string | string[]) => env.BUCKET.delete(keys)) as R2Bucket['delete'],
     };
@@ -177,6 +191,23 @@ describe('ingestEmail', () => {
     expect(await count('attachments')).toBe(0);
     expect(await env.DB.prepare('SELECT attachments_incomplete AS i FROM messages').first()).toEqual({ i: 1 });
     expect(await r2Keys()).toEqual([]);
+  });
+
+  it('logs and survives a failing R2 cleanup', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const bucket: IngestDeps['bucket'] = {
+      put: (async () => {
+        throw new Error('R2 down');
+      }) as R2Bucket['put'],
+      delete: (async () => {
+        throw new Error('cleanup down');
+      }) as R2Bucket['delete'],
+    };
+    const raw = buildMail({ to: TO, attachments: [pdfAtt('a.pdf', await makePdf('a'))] });
+    const out = await ingestEmail(input(raw), { db: env.DB, bucket }, cfg, NOW);
+    expect(out).toMatchObject({ status: 'stored', incomplete: true });
+    expect(spy).toHaveBeenCalledWith('R2 cleanup failed', expect.any(Error));
+    spy.mockRestore();
   });
 
   it('D1 failure rolls back R2 and throws', async () => {
