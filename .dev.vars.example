@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local dev (`wrangler dev`) and e2e. Synthetic values only.
+API_HOST=127.0.0.1:8787
+UI_HOST=localhost:8787
+UI_ORIGIN=http://localhost:8787
+ALLOWED_DOMAINS=staging.test.example,prod.test.example
+UI_AUTH_MODE=dev
+API_TOKENS={"staging.test.example":["stage-token-a","stage-token-b"],"prod.test.example":["prod-token"]}
