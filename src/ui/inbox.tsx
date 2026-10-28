@@ -99,10 +99,12 @@ export function RowsBody(props: { rows: MessageSummary[]; now: number }) {
                 <input type="checkbox" name="ids" value={m.id} aria-label="Select mail" />
               </td>
               <td class="to">
-                <a href={href} class="inbox mono">
-                  {m.inbox}
-                </a>
-                {props.now - m.received_at < NEW_MS ? <span class="newtag">NEW</span> : null}
+                <div class="to-wrap">
+                  <a href={href} class="inbox mono" title={m.inbox}>
+                    {m.inbox}
+                  </a>
+                  {props.now - m.received_at < NEW_MS ? <span class="newtag">NEW</span> : null}
+                </div>
               </td>
               <td>
                 <a href={href} class="from">

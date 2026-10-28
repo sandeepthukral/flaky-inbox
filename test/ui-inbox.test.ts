@@ -107,6 +107,13 @@ describe('inbox page', () => {
     expect(html).toContain(`name="back" value="/?domain=${STAGING}&amp;size=100"`);
   });
 
+  it('long inbox names carry the full name as a hover title', async () => {
+    const long = `autouserwebtest-${'a'.repeat(36)}`;
+    await put(long);
+    const html = await (await SELF.fetch(`${UI}/rows?domain=${STAGING}`)).text();
+    expect(html).toContain(`class="inbox mono" title="${long}"`);
+  });
+
   it('shows a text preview, sender initials and a NEW tag on fresh mail', async () => {
     const now = Date.now();
     await put('fresh', { fromName: 'Jane Doe', text: 'Hello   there\r\n  world' }, STAGING, now - 60_000);

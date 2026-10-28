@@ -122,18 +122,21 @@ const STYLES = `
   td.check, th.check { width: 44px; padding-right: 0 !important; }
   input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
 
-  .inbox { display: inline-block; white-space: nowrap; padding: 3px 10px; border-radius: 8px; font-weight: 600; color: var(--accent-text); background: var(--accent-soft); }
-  .newtag { display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 800; color: #fff; padding: 1px 6px; border-radius: 6px;
+  .inbox { padding: 3px 10px; border-radius: 8px; font-weight: 600; color: var(--accent-text); background: var(--accent-soft);
+    /* Long names wrap to two lines, then end in an ellipsis; the full name is in the title. */
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: break-all; max-width: 230px; }
+  .to-wrap { display: flex; align-items: center; gap: 6px; min-width: 170px; }
+  .newtag { flex: none; display: inline-block; font-size: 10.5px; font-weight: 800; color: #fff; padding: 1px 6px; border-radius: 6px;
     background: linear-gradient(90deg, var(--accent), var(--pink)); vertical-align: 1px; }
   .from { display: flex; align-items: center; gap: 10px; }
-  .from .name { display: block; font-weight: 600; white-space: nowrap; }
-  .from .addr { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
-  td.to { white-space: nowrap; }
+  .from .name, .from .addr { display: block; white-space: nowrap; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  .from .name { font-weight: 600; }
+  .from .addr { color: var(--muted); font-size: 12.5px; }
   .av { width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; }
   .av0 { background: linear-gradient(135deg, #6366f1, #8b5cf6); } .av1 { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
   .av2 { background: linear-gradient(135deg, #f59e0b, #ec4899); } .av3 { background: linear-gradient(135deg, #10b981, #06b6d4); }
   .av4 { background: linear-gradient(135deg, #ec4899, #8b5cf6); } .av5 { background: linear-gradient(135deg, #f97316, #ef4444); }
-  .subject { display: block; font-weight: 600; max-width: 430px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .subject { display: block; font-weight: 600; max-width: clamp(120px, 20vw, 430px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .subject .preview { color: var(--muted); font-weight: 400; }
   .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
   .pill.pdf { background: var(--red-soft); color: var(--red); }
