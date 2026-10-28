@@ -43,6 +43,13 @@ export function parseApiTokens(raw: string | undefined): Record<string, string[]
   }
 }
 
+function uiOrigin(env: Env): string {
+  const explicit = (env.UI_ORIGIN ?? '').trim();
+  if (explicit) return explicit;
+  const host = (env.UI_HOST ?? '').trim().toLowerCase();
+  return host ? `https://${host}` : '';
+}
+
 // Cheap on purpose: called per request/event, never cached at module level.
 export function parseConfig(env: Env): Config {
   return {
@@ -52,7 +59,7 @@ export function parseConfig(env: Env): Config {
       .filter(Boolean),
     apiHost: (env.API_HOST ?? '').trim().toLowerCase(),
     uiHost: (env.UI_HOST ?? '').trim().toLowerCase(),
-    uiOrigin: env.UI_ORIGIN,
+    uiOrigin: uiOrigin(env),
     retentionMs: num(env.RETENTION_HOURS, 72) * 3_600_000,
     statsRetentionDays: num(env.STATS_RETENTION_DAYS, 90),
     maxMessageBytes: num(env.MAX_MESSAGE_BYTES, 10_485_760),

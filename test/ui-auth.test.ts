@@ -42,10 +42,27 @@ describe('UI auth', () => {
     expect(res.status).toBe(403);
   });
 
-  it('POST without Origin is 403 when UI_ORIGIN is unset', async () => {
+  it('derives the origin from UI_HOST when UI_ORIGIN is unset; foreign origin is 403', async () => {
+    const e = { ...env, UI_ORIGIN: undefined } as unknown as typeof env;
+    const form = () => new URLSearchParams({ back: '/' });
+    const ok = await worker.fetch(
+      new Request('http://localhost:8787/delete', { method: 'POST', body: form(), headers: { Origin: 'https://localhost:8787' } }),
+      e,
+      ctx,
+    );
+    expect(ok.status).toBe(303);
+    const bad = await worker.fetch(
+      new Request('http://localhost:8787/delete', { method: 'POST', body: form(), headers: { Origin: 'https://evil.example' } }),
+      e,
+      ctx,
+    );
+    expect(bad.status).toBe(403);
+  });
+
+  it('dev mode on a non-local UI host is treated as access (403 without assertion)', async () => {
     const res = await worker.fetch(
-      new Request('http://localhost:8787/', { method: 'POST' }),
-      { ...env, UI_ORIGIN: undefined } as unknown as typeof env,
+      new Request('https://mailinat.flaky-tests.uk/'),
+      { ...env, UI_HOST: 'mailinat.flaky-tests.uk', UI_ORIGIN: 'https://mailinat.flaky-tests.uk', UI_AUTH_MODE: 'dev' },
       ctx,
     );
     expect(res.status).toBe(403);

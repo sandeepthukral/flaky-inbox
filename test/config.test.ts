@@ -50,4 +50,12 @@ describe('parseConfig hosts and tokens', () => {
     expect(cfg.uiHost).toBe('ui.test');
     expect(cfg.apiTokens).toEqual({});
   });
+
+  it('derives uiOrigin from UI_HOST, trims UI_ORIGIN, and is empty (fail closed) with neither', () => {
+    expect(parseConfig({ ...baseEnv, UI_ORIGIN: ' https://x.test ' } as Env).uiOrigin).toBe('https://x.test');
+    expect(parseConfig({ ...baseEnv, UI_ORIGIN: undefined, UI_HOST: 'UI.Test' } as unknown as Env).uiOrigin).toBe(
+      'https://ui.test',
+    );
+    expect(parseConfig({ ...baseEnv, UI_ORIGIN: undefined, UI_HOST: ' ' } as unknown as Env).uiOrigin).toBe('');
+  });
 });

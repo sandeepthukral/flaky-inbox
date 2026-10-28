@@ -30,7 +30,9 @@ export function createUiApp(): Hono<{ Bindings: Env; Variables: { user: string }
   // Fail closed: no valid Access assertion, no page.
   app.use('*', async (c, next) => {
     const cfg = parseConfig(c.env);
-    if (cfg.uiAuthMode === 'dev') {
+    // Production guard: dev mode only counts on a local UI host; anywhere else it is treated as access.
+    const localHost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(cfg.uiHost);
+    if (cfg.uiAuthMode === 'dev' && localHost) {
       c.set('user', 'dev@local');
       return next();
     }
