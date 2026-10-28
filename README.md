@@ -51,7 +51,8 @@ curl -H 'Authorization: stage-token-a' http://127.0.0.1:8787/api/v2/domains/stag
 
 ## Cloudflare setup (needs the account owner)
 
-Do these in order. Nothing here is automated.
+Do these in order. Nothing here is automated. For the full click-by-click runbook, with the
+dashboard gotchas found on the first deployment, see [`docs/deploy.md`](docs/deploy.md).
 
 1. **Domain.** Add `flaky-tests.uk` to the Cloudflare account (Free plan) and point the registrar's
    nameservers at Cloudflare, or buy it at Cloudflare Registrar. Wait until the zone is Active. The
