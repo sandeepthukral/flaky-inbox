@@ -28,6 +28,25 @@ function truncateUtf8(s: string | undefined, maxBytes: number): string | null {
   return new TextDecoder().decode(bytes.subarray(0, end));
 }
 
+// D1 rejects rows over ~2,000,000 bytes, which would lose the mail. Keep headers + text + html under
+// this cap by trimming html first, then text.
+const ROW_BODY_CAP = 1_900_000;
+
+function capRowBytes(
+  headersJson: string,
+  text: string | null,
+  html: string | null,
+): { headers_json: string; text_body: string | null; html_body: string | null } {
+  const size = (s: string | null) => (s === null ? 0 : new TextEncoder().encode(s).length);
+  let room = ROW_BODY_CAP - size(headersJson);
+  if (room < 0) room = 0;
+  if (size(text) + size(html) > room) {
+    html = truncateUtf8(html ?? undefined, Math.max(0, room - size(text)));
+    if (size(text) + size(html) > room) text = truncateUtf8(text ?? undefined, Math.max(0, room - size(html)));
+  }
+  return { headers_json: headersJson, text_body: text, html_body: html };
+}
+
 function toHex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -74,7 +93,6 @@ export async function ingestEmail(
 
   const candidates: Array<{ bytes: Uint8Array; filename: string | null; mimeType: string }> = [];
   for (const a of parsed.attachments) {
-    if (a.disposition === 'inline' && a.contentId) continue;
     const bytes = new Uint8Array(a.content as ArrayBuffer);
     if (!isAcceptedPdf(bytes, a.mimeType, a.filename ?? undefined)) continue;
     candidates.push({ bytes, filename: a.filename, mimeType: a.mimeType });
@@ -123,9 +141,11 @@ export async function ingestEmail(
     from_addr: from?.address || input.envelopeFrom,
     to_addr: to,
     subject: parsed.subject ?? null,
-    headers_json: JSON.stringify(headers),
-    text_body: truncateUtf8(parsed.text, cfg.maxBodyBytes),
-    html_body: truncateUtf8(parsed.html, cfg.maxBodyBytes),
+    ...capRowBytes(
+      JSON.stringify(headers),
+      truncateUtf8(parsed.text, cfg.maxBodyBytes),
+      truncateUtf8(parsed.html, cfg.maxBodyBytes),
+    ),
     skipped_attachments: skipped,
     attachments_incomplete: incomplete ? 1 : 0,
     received_at: now,

@@ -252,4 +252,30 @@ describe('ingestEmail', () => {
     expect(row!.html_body).not.toContain('�');
     expect(row!.html_body.length).toBeGreaterThan(500_000);
   });
+
+  it('stores an inline PDF that has a Content-Id', async () => {
+    const raw = buildMail({ to: TO, attachments: [pdfAtt('inline.pdf', await makePdf('inline-1'))] }).replace(
+      'Content-Disposition: attachment; filename="inline.pdf"',
+      'Content-Disposition: inline; filename="inline.pdf"\r\nContent-Id: <cid-1@sender.example>',
+    );
+    expect(raw).toContain('Content-Id: <cid-1');
+    const out = await ingestEmail(input(raw), deps, cfg, NOW);
+    expect(out).toMatchObject({ status: 'stored', attachments: 1 });
+  });
+
+  it('keeps headers + text + html under the D1 row cap with two 1.5 MB bodies', async () => {
+    const raw = buildMail({
+      to: TO,
+      text: 'a'.repeat(1_500_000),
+      html: `<p>${'b'.repeat(1_500_000)}</p>`,
+    });
+    const out = await ingestEmail(input(raw), deps, { ...cfg, maxMessageBytes: 10_000_000 }, NOW);
+    expect(out.status).toBe('stored');
+    const row = await env.DB.prepare(
+      'SELECT length(CAST(headers_json AS BLOB)) + length(CAST(text_body AS BLOB)) + length(CAST(html_body AS BLOB)) AS n, length(html_body) AS h, length(text_body) AS t FROM messages',
+    ).first<{ n: number; h: number; t: number }>();
+    expect(row!.n).toBeLessThanOrEqual(1_900_000);
+    expect(row!.t).toBeGreaterThan(500_000);
+    expect(row!.h).toBeGreaterThan(100_000);
+  });
 });
