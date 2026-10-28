@@ -1,7 +1,7 @@
 # flaky-inbox: design
 
 Date: 2026-10-27
-Status: draft, awaiting the user's approval
+Status: approved 2026-10-28
 
 ## 1. What this is and why
 
