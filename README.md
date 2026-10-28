@@ -15,7 +15,7 @@ Design: `docs/superpowers/specs/2026-10-27-flaky-inbox-design.md`.
 
 ## Local development
 
-Needs Node 22.18+ and pnpm (the version in `package.json`).
+Needs Node 24 (what CI and local development use; `pnpm cpu-sample` also needs Node's built-in TypeScript support) and pnpm (the version in `package.json`).
 
 ```sh
 pnpm install
@@ -138,6 +138,15 @@ Chosen `MAX_ATTACHMENT_BYTES` / `MAX_MESSAGE_BYTES`: ____
 ## Live acceptance gate
 
 `docs/acceptance.md` is the checklist, run against the deployed service with `e2e/live.spec.ts`.
+Run that spec **alone**: the Mailinator helper reads `MAILINATOR_API_BASE_URL` once at import, so if
+another spec in the same worker imported it first, the live spec silently hits `127.0.0.1`.
+
+```sh
+LIVE_API_BASE=https://mail-api.flaky-tests.uk/api/v2 LIVE_DOMAIN=ecom-staging.flaky-tests.uk \
+MAILINATOR_API_KEY=<staging token> LIVE_INBOX=<inbox> LIVE_LINK_PREFIX=<url prefix> [LIVE_EXPECT_PDF=1] \
+pnpm e2e live.spec.ts
+```
+
 **No change is made in `action/web` until every item in `docs/acceptance.md` is ticked.**
 
 ## Pointing `action/web` at the service

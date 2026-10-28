@@ -1,5 +1,5 @@
 // Writes three sample mails (about 60 KB, 1 MB and 5 MB of PDF) to tmp/ for the CPU measurement
-// in the README. Run with: pnpm cpu-sample. Needs Node 22.18+ (runs TypeScript directly).
+// in the README. Run with: pnpm cpu-sample. Needs Node 24 (runs TypeScript directly).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { buildMail, makePdf } from '../test/mail-builder.ts';
 
